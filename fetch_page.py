@@ -25,7 +25,13 @@ def send_telegram_message(message):
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
-    requests.post(url, data=payload)
+    try:
+        response = requests.post(url, data=payload)
+        response.raise_for_status()  # Check for HTTP errors
+        print(f"Message sent successfully. Status: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message: {e}")
+        print(f"Server response: {response.text if 'response' in locals() else 'No response'}")
 
 def main():
     for name, url in URLS.items():

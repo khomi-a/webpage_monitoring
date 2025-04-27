@@ -26,9 +26,10 @@ This repository contains an automated monitoring system that checks selected web
 2. In [`fetch_page.py`](fetch_page.py), edit the `URLS` dictionary to include the pages you want to monitor.
 3. In your repository settings (`Settings -> Secrets and variables -> Actions`), create two new secrets:
    - `TELEGRAM_TOKEN` — your Telegram bot token (from @BotFather).
-   - `TELEGRAM_CHAT_ID` — your personal or group Chat ID in Telegram (e.g. from @userinfobot).
+   - `TELEGRAM_CHAT_ID` — your personal or group Chat ID in Telegram (e.g. from @userinfobot). **Important**: you should start the dialogue with your bot after creation. 
 4. (Optional) Adjust the monitoring frequency in [`check_page.yml`](.github/workflows/check_page.yml) (by default, it runs every hour).
-5. Done! GitHub Actions will automatically check the pages and notify you if anything changes. 
+5. You should run the script locally first time and push _hash.txt files to your repo.
+6. Done! GitHub Actions will automatically check the pages and notify you if anything changes. 
 
 ---
 
