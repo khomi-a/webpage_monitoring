@@ -1,7 +1,7 @@
 import os
+import re
 import requests
-import hashlib
-from bs4 import BeautifulSoup
+from html import unescape
 
 # Список страниц для отслеживания
 URLS = {
@@ -20,38 +20,36 @@ def send_telegram_message(message):
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message}
     requests.post(url, data=payload)
 
-def get_page_content(url):
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.text
-
 def check_slots(html):
-    soup = BeautifulSoup(html, 'html.parser')
     alerts = []
-    rows = soup.find_all('tr', class_='bs_even') + soup.find_all('tr', class_='bs_odd')
+
+    # Извлекаем все блоки <tr>...</tr>
+    rows = re.findall(r"<tr.*?</tr>", html, flags=re.DOTALL)
 
     for row in rows:
-        detail_cell = row.find('td', class_='bs_sdet')
-        if not detail_cell:
-            continue
-        detail_text = detail_cell.get_text(strip=True)
+        # Получаем kurs_id из id атрибута <tr>
+        id_match = re.search(r'<tr[^>]*id=["\']([^"\']+)["\']', row)
+        kurs_id = id_match.group(1) if id_match else "unknown"
 
-        if detail_text not in ('Fortg. Mixed', 'Freies Spiel Fortg'):
-            continue
-
-        booking_cell = row.find('td', class_='bs_sbuch')
-        if not booking_cell:
-            continue
-        button = booking_cell.find('input', {'type': 'submit'})
-
-        if not button:
+        # Извлекаем название курса
+        sdet_match = re.search(r"<td class=['\"]bs_sdet['\"]>(.*?)</td>", row, flags=re.DOTALL)
+        if not sdet_match:
             continue
 
-        button_class = button.get('class', [''])[0] if button.has_attr('class') else ''
+        detail_text = unescape(re.sub(r"<.*?>", "", sdet_match.group(1))).strip()
+        if detail_text not in ("Fortg. Mixed", "Freies Spiel Fortg"):
+            continue
+
+        # Извлекаем input-кнопку
+        button_match = re.search(r'<input[^>]+class=["\']([^"\']+)["\'][^>]+value=["\']([^"\']+)["\']', row)
+        if not button_match:
+            continue
+
+        button_class = button_match.group(1)
+        button_value = button_match.group(2)
 
         if button_class not in ('bs_btn_warteliste', 'bs_btn_ausgebucht'):
-            kurs_id = row.get('id', 'unknown')
-            alerts.append(f"📢 Slot available: {detail_text} ({kurs_id}) → {button.get('value', '')}")
+            alerts.append(f"📢 Slot available: {detail_text} ({kurs_id}) → {button_value}")
 
     return alerts
 
@@ -66,6 +64,11 @@ def main():
                 send_telegram_message(msg)
         else:
             print(f"No open slots found for {name}.")
+
+def get_page_content(url):
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.text
 
 if __name__ == "__main__":
     main()
